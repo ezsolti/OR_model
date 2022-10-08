@@ -1,0 +1,571 @@
+set title "Budapest training reactor aka Oktatoreaktor"
+
+%%%%%%
+% the model is based on publicly available information of the reaktor and EK-10 fuel assemblies.
+% data related to irradiation channels is however missing, hence guesstimates were used
+% there is some incosistancy in sizes from various sources. again guesstimates were used to resolve such.
+% Main sources of insparations:
+%    - http://www.reak.bme.hu/en/training-reactor/training-reactor.html
+%    - https://d-nb.info/1214926932/34
+%    - http://www.haea.gov.hu/web/v3/oahportal.nsf/371C5096A5F4CB45C1257E580024FCCB/$FILE/304_Reaktivitastartalek_02.pdf
+% I observe a rather large reactivity reserve compared to the claimed 1.56$ in 1980. And by then the burnup was still rather low.
+
+%%%%%%% GENERIC FUEL ROD %%%%%%%%%
+%made of FRP fuel rod pin
+%endplugs
+%end water below and above and around
+pin FRP
+mat_fuel 0.35
+mat_clad  0.5
+mat_water
+
+%the endplug is just an assumption. I know the radius of the bottom=0.5cm
+%i know the radius of the top=0.35
+%and i assume that the truncated cone has a length of 1.0cm 
+%rtop/rbottom=htop/htot where htop=htot-hbottom where hbottom=1.0
+%I also ignore there there might be couple of mm Al within the pincyl aboce the pin
+surf topplug_cone cone  0 0 25 0.5 3.333333333 
+surf topplug_cyl cyl  0 0 0.35 
+surf topplug_bottom pz 25
+surf topplug_top1 pz 26
+surf topplug_top2 pz 27
+surf pincyl cyl 0 0 0.5 -25 25
+
+surf bottomplug_cone cone 0 0 -25 0.5 -3.333333333 
+surf bottomplug_cyl cyl  0 0 0.35 
+surf bottomplug_bottom pz -25
+surf bottomplug_top1 pz -26
+surf bottomplug_top2 pz -27
+
+
+cell fuel_rod_pin FR fill FRP -pincyl 
+cell fuel_rod_mod FR mat_water pincyl -topplug_bottom bottomplug_bottom
+cell fuel_rod_topplug_cone FR mat_clad -topplug_cone topplug_bottom -topplug_top1
+cell fuel_rod_topplug_mod1 FR mat_water   topplug_cone topplug_bottom -topplug_top1
+cell fuel_rod_topplug_cyl FR mat_clad -topplug_cyl topplug_top1 -topplug_top2
+cell fuel_rod_topplug_mod2 FR mat_water   topplug_cyl topplug_top1 -topplug_top2
+cell fuel_rod_topplug_mod3 FR mat_water   topplug_top2
+
+cell fuel_rod_bottomplug_cone FR mat_clad -bottomplug_cone -bottomplug_bottom bottomplug_top1
+cell fuel_rod_bottomplug_mod1 FR mat_water   bottomplug_cone -bottomplug_bottom bottomplug_top1
+cell fuel_rod_bottomplug_cyl FR mat_clad -bottomplug_cyl -bottomplug_top1 bottomplug_top2
+cell fuel_rod_bottomplug_mod2 FR mat_water  bottomplug_cyl -bottomplug_top1 bottomplug_top2
+cell fuel_rod_bottomplug_mod3 FR mat_water   -bottomplug_top2
+
+% moderator pin
+pin M
+mat_water
+
+% graphite pin for graphite assemblies
+pin RR
+mat_graphite
+
+%Water filled irradiation channel in graphite
+pin QR
+mat_water 1.55
+mat_clad 1.7
+mat_graphite
+
+%%%%Normal EK-10 assy%%%%%
+lat A 1 0.0 0.0 4 4 1.7
+FR FR FR FR
+FR FR FR FR
+FR FR FR FR
+FR FR FR FR
+
+surf surf_assy      sqc 0.0 0.0 3.25 0.5
+%note, some sources say the graphite clad is 1.5mm thick, and the fuel is 1.2mm
+%other sources indicate 1.5mm for the assembly clad as well.
+surf surf_assy_clad sqc 0.0 0.0 3.4 0.5
+
+cell cell_assy F fill A -surf_assy
+cell cell_assy_clad F mat_clad surf_assy -surf_assy_clad bottomplug_bottom -topplug_bottom 
+cell cell_assy_moda F mat_water surf_assy_clad
+cell cell_assy_modb F mat_water surf_assy -surf_assy_clad topplug_bottom 
+cell cell_assy_modc F mat_water surf_assy -surf_assy_clad -bottomplug_bottom
+
+%Graphite blocks
+surf graphite_bottom pz -30
+surf graphite_top pz 30
+cell cell_assy_graphite R fill RR -surf_assy graphite_bottom -graphite_top
+cell cell_assy_graphite_clad R mat_clad surf_assy -surf_assy_clad graphite_bottom -graphite_top
+cell cell_assy_graphite_mod1 R mat_water surf_assy_clad graphite_bottom -graphite_top %Unclear whether water surrounds the graphite blocks but probably
+cell cell_assy_graphite_mod2 R mat_water -graphite_bottom:graphite_top
+
+%%reflector graphite with irradiation position
+cell cell_assy_graphite2 Q fill QR -surf_assy  graphite_bottom -graphite_top
+cell cell_assy_graphite2_clad Q mat_clad surf_assy -surf_assy_clad  graphite_bottom -graphite_top
+cell cell_assy_graphite2_mod1 Q mat_water surf_assy_clad  graphite_bottom -graphite_top
+cell cell_assy_graphite2_mod2 Q mat_water -graphite_bottom:graphite_top
+
+%%%%Partial EK-10 assy 1%%%%%
+%this is simply swapping 3 rods to Moderator
+lat B 1 0.0 0.0 4 4 1.7
+FR FR FR FR
+FR FR FR FR
+M FR FR FR
+M M FR FR
+cell cell_assy1 G fill B -surf_assy
+cell cell_assy_clad1 G mat_clad surf_assy -surf_assy_clad  bottomplug_bottom -topplug_bottom 
+cell cell_assy_mod1a G mat_water surf_assy_clad
+cell cell_assy_mod1b G mat_water surf_assy -surf_assy_clad topplug_bottom 
+cell cell_assy_mod1c G mat_water surf_assy -surf_assy_clad -bottomplug_bottom
+
+%%%%Partial EK-10 assy 2%%%%%
+%this has an irradiation channel in the center instead of 4 rods
+lat C 1 0.0 0.0 4 4 1.7
+FR FR FR FR
+FR M M FR
+FR M M FR
+FR FR FR FR
+    
+
+surf surf_tube_i cylz 0 0 1.7
+cell cell_assy2_ipos H fill Q -surf_tube_i
+cell cell_assy2 H fill C -surf_assy surf_tube_i
+cell cell_assy_clad2 H mat_clad surf_assy -surf_assy_clad  bottomplug_bottom -topplug_bottom 
+cell cell_assy_mod2a H mat_water surf_assy_clad
+cell cell_assy_mod2b H mat_water surf_assy -surf_assy_clad topplug_bottom 
+cell cell_assy_mod2c H mat_water surf_assy -surf_assy_clad -bottomplug_bottom
+
+
+%%%%Altered EK-10 assy 1%%%%
+%this has one corner cutoff, and 5 pins are displaced from the original position
+%2 pins are slightly displaced, this can be moved with fill transformation
+%3 pins are displaced more than the assy halfpitch, these are filled in separately
+%here what to remember is that this is the serpent coordinate
+% ^y
+% |
+% |13 14 15 16
+% | 9 10 11 12
+% | 5  6  7  8 
+% | 1  2  3  4
+% -----------> x
+%
+% but in fact we give the lattice in the order
+%
+% 1 2 3 4 5 6 7 8 ...
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+lat D 1 0.0 0.0 4 4 1.7
+FR FR FR FR
+FR FR FR FR
+FR FR FR M
+FR FR M M
+
+%these two we can translate because it will not get in the neighbouring pincell
+trans L D 14 -0.2 0 0
+trans L D 8   0 -0.2 0
+
+%for this i define 3 surfaces, fill it with FR and apply a fill transformation
+surf shiftedpin1 cyl 2.55 0.45 0.5
+surf shiftedpin2 cyl 0.45 2.55 0.5
+surf shiftedpin3 cyl 1.8 1.8   0.5
+
+cell cell_shiftedpin1 I fill FR -shiftedpin1
+trans F cell_shiftedpin1 2.55 0.45  0
+cell cell_shiftedpin2 I fill FR -shiftedpin2
+trans F cell_shiftedpin2 0.45 2.55 0
+cell cell_shiftedpin3 I fill FR -shiftedpin3
+trans F cell_shiftedpin3 1.8 1.8 0
+
+%clad cutoff
+%Note from wiki: The positive side for a plane defined by three points is determined by the order in which the points are entered (see the right-hand rule)
+%Here i set up the order so that the positive sign gives the result I feel natural
+
+surf cutoff_in  plane  3.25 1.35 0.0 2.3 2.3 -1.0 2.3 2.3 0.0    
+surf cutoff_out plane 3.25 1.56 0.0  2.41 2.41 -1.0   2.41 2.41 0.0 
+
+cell cell_assy3 I fill D -surf_assy shiftedpin1 shiftedpin2 shiftedpin3 -cutoff_in
+cell cell_assy_clad3a I mat_clad  cutoff_in -cutoff_out -surf_assy_clad   bottomplug_bottom -topplug_bottom 
+cell cell_assy_clad3b I mat_clad surf_assy -cutoff_in -surf_assy_clad     bottomplug_bottom -topplug_bottom 
+cell cell_assy_mod3a I mat_water surf_assy_clad -cutoff_out 
+cell cell_assy_mod3b I mat_water  cutoff_out
+cell cell_assy_mod3c I mat_water surf_assy -cutoff_in -surf_assy_clad    topplug_bottom 
+cell cell_assy_mod3d I mat_water surf_assy -cutoff_in -surf_assy_clad   -bottomplug_bottom 
+cell cell_assy_mod3e I mat_water  cutoff_in -cutoff_out -surf_assy_clad  topplug_bottom 
+cell cell_assy_mod3f I mat_water  cutoff_in -cutoff_out -surf_assy_clad -bottomplug_bottom 
+
+%%%%Altered EK-10 assy 2%%%%
+%this has three corners cutoff, and 11 pins are displaced from the original position
+%there is a symmetry to this assembly, but I will manage without using symmetries
+%6 pins are slightly displaced, this can be moved with fill transformation
+%5 pins are displaced more than the assy halfpitch, these are filled in separately
+lat E 1 0.0 0.0 4 4 1.7
+FR FR M M
+FR FR FR FR
+M FR FR FR
+M FR FR M
+
+%these we can translate because it will not get in the neighbouring pincell
+trans L E 2  -0.25 0 0 
+trans L E 5  0  -0.25 0
+trans L E 8  0  0.15 0
+trans L E 12 0 -0.1 0
+trans L E 14  0.15 0 0 
+trans L E 15 -0.1 0 0 
+
+%Again, i fill some pins in, and fill transform
+surf shiftedpin11 cyl 0.35 -2.55 0.5
+surf shiftedpin22 cyl 1.65 -1.9 0.5
+surf shiftedpin33 cyl -2.55 0.35   0.5
+surf shiftedpin44 cyl -1.9 1.65   0.5
+surf shiftedpin55 cyl 1.85 1.85   0.5
+
+cell cell_shiftedpin11 J fill FR -shiftedpin11
+trans F cell_shiftedpin11 0.35 -2.55 0.0
+cell cell_shiftedpin22 J fill FR -shiftedpin22
+trans F cell_shiftedpin22 1.65 -1.9 0.0
+cell cell_shiftedpin33 J fill FR -shiftedpin33
+trans F cell_shiftedpin33 -2.55 0.35 0.0
+cell cell_shiftedpin44 J fill FR -shiftedpin44
+trans F cell_shiftedpin44 -1.9 1.65 0.0
+cell cell_shiftedpin55 J fill FR -shiftedpin55
+trans F cell_shiftedpin55 1.85 1.85 0.0
+
+
+%surf cutoff_in  plane  3.25 1.35 0.0 2.3 2.3 -1.0 2.3 2.3 0.0    
+%surf cutoff_out plane 3.25 1.56 0.0  2.41 2.41 -1.0   2.41 2.41 0.0 
+
+surf cutoff_in2  plane  3.25 -1.35 0.0  2.3 -2.3 -1.0     2.3 -2.3 0.0    
+surf cutoff_out2 plane 3.25  -1.56 0.0  2.41 -2.41 -1.0   2.41 -2.41 0.0 
+
+surf cutoff_in3  plane  -3.25 1.35 0.0  -2.3  2.3 -1.0   -2.3  2.3 0.0    
+surf cutoff_out3 plane  -3.25 1.56 0.0  -2.41 2.41 -1.0  -2.41 2.41 0.0 
+
+
+cell cell_assy4 J fill E -surf_assy -cutoff_in cutoff_in2 cutoff_in3 shiftedpin11 shiftedpin22 shiftedpin33 shiftedpin44 shiftedpin55
+
+cell cell_assy_clad4a J mat_clad  cutoff_in -cutoff_out -surf_assy_clad  bottomplug_bottom -topplug_bottom 
+cell cell_assy_clad4b J mat_clad  -cutoff_in2 cutoff_out2 -surf_assy_clad bottomplug_bottom -topplug_bottom 
+cell cell_assy_clad4c J mat_clad  -cutoff_in3 cutoff_out3 -surf_assy_clad bottomplug_bottom -topplug_bottom 
+cell cell_assy_clad4d J mat_clad surf_assy -surf_assy_clad -cutoff_in cutoff_in2 cutoff_in3 bottomplug_bottom -topplug_bottom 
+cell cell_assy_mod4a J mat_water surf_assy_clad -cutoff_out cutoff_out2 cutoff_out3
+cell cell_assy_mod4b J mat_water -cutoff_out2
+cell cell_assy_mod4c J mat_water cutoff_out 
+cell cell_assy_mod4d J mat_water -cutoff_out3 
+
+cell cell_assy_mod4e J mat_water  cutoff_in -cutoff_out -surf_assy_clad   topplug_bottom 
+cell cell_assy_mod4f J mat_water  -cutoff_in2 cutoff_out2 -surf_assy_clad topplug_bottom 
+cell cell_assy_mod4g J mat_water  -cutoff_in3 cutoff_out3 -surf_assy_clad topplug_bottom 
+cell cell_assy_mod4h J mat_water surf_assy -surf_assy_clad -cutoff_in cutoff_in2 cutoff_in3 topplug_bottom 
+
+cell cell_assy_mod4i J mat_water  cutoff_in -cutoff_out -surf_assy_clad  -bottomplug_bottom 
+cell cell_assy_mod4j J mat_water  -cutoff_in2 cutoff_out2 -surf_assy_clad -bottomplug_bottom
+cell cell_assy_mod4k J mat_water  -cutoff_in3 cutoff_out3 -surf_assy_clad -bottomplug_bottom
+cell cell_assy_mod4l J mat_water surf_assy -surf_assy_clad -cutoff_in cutoff_in2 cutoff_in3 -bottomplug_bottom
+
+
+
+%%%%Altered EK-10 assy 3%%%%
+%this is only a half assembly, with 2 corners cutoff, and 6 pins are displaced from the original position
+%in one half of the assy is the fast rabbit. Sizes of that is only guessed
+%The assembly is otherwise similar to "altered EK-10 assy 2", so we essentially repeat that
+lat EE 1 0.0 0.0 4 4 1.7
+M M M M
+M M FR FR
+M M FR FR
+M M FR M
+
+
+%these we can translate because it will not get in the neighbouring pincell
+trans L EE 8  0  0.15 0
+trans L EE 12 0 -0.1 0
+trans L EE 14  0.15 0 0 
+
+
+%same as before, no need for new surfaces
+cell cell_shiftedpin111 K fill FR -shiftedpin11
+trans F cell_shiftedpin111 0.35 -2.55 0.0
+cell cell_shiftedpin222 K fill FR -shiftedpin22
+trans F cell_shiftedpin222 1.65 -1.9 0.0
+cell cell_shiftedpin555 K fill FR -shiftedpin55
+trans F cell_shiftedpin555 1.85 1.85 0.0
+
+%%%%%%fast rabbit%%%%%%
+pin rabbit
+mat_air 1.55 %this is just a guess. it might be double cladded?
+mat_clad
+trans U rabbit -1.45 0 0
+
+surf rabbit_cyl cyl -1.45 0 1.67  %this is just a guess
+
+cell cell_assy5 K fill EE -surf_assy -cutoff_in cutoff_in2 cutoff_in3 shiftedpin11 shiftedpin22 shiftedpin55 rabbit_cyl
+cell cell_assy5_rabbit K fill rabbit -rabbit_cyl
+cell cell_assy_clad5a K mat_clad  cutoff_in -cutoff_out -surf_assy_clad  bottomplug_bottom -topplug_bottom
+cell cell_assy_clad5b K mat_clad  -cutoff_in2 cutoff_out2 -surf_assy_clad  bottomplug_bottom -topplug_bottom
+cell cell_assy_clad5c K mat_clad  -cutoff_in3 cutoff_out3 -surf_assy_clad  bottomplug_bottom -topplug_bottom
+cell cell_assy_clad5d K mat_clad surf_assy -surf_assy_clad -cutoff_in cutoff_in2 cutoff_in3  bottomplug_bottom -topplug_bottom
+cell cell_assy_mod5a K mat_water surf_assy_clad -cutoff_out cutoff_out2 cutoff_out3
+cell cell_assy_mod5b K mat_water -cutoff_out2
+cell cell_assy_mod5c K mat_water cutoff_out 
+cell cell_assy_mod5d K mat_water -cutoff_out3 
+
+cell cell_assy_mod5e K mat_water  cutoff_in -cutoff_out -surf_assy_clad    -bottomplug_bottom
+cell cell_assy_mod5f K mat_water  -cutoff_in2 cutoff_out2 -surf_assy_clad  -bottomplug_bottom
+cell cell_assy_mod5g K mat_water  -cutoff_in3 cutoff_out3 -surf_assy_clad  -bottomplug_bottom
+cell cell_assy_mod5h K mat_water surf_assy -surf_assy_clad -cutoff_in cutoff_in2 cutoff_in3  -bottomplug_bottom
+
+cell cell_assy_mod5i K mat_water  cutoff_in -cutoff_out -surf_assy_clad  topplug_bottom
+cell cell_assy_mod5j K mat_water  -cutoff_in2 cutoff_out2 -surf_assy_clad  topplug_bottom
+cell cell_assy_mod5k K mat_water  -cutoff_in3 cutoff_out3 -surf_assy_clad  topplug_bottom
+cell cell_assy_mod5l K mat_water surf_assy -surf_assy_clad -cutoff_in cutoff_in2 cutoff_in3  topplug_bottom
+
+
+%%%%%%%irradiation positions in water with double channels - Absolutely just guessing sizes here
+%potential TODO, here the irradiation tubes are cut away, potentially they should reach the surface.
+%same goes for any channel/graphite block with irradiation positions.
+pin TR
+mat_water 1.45
+mat_clad 1.6
+mat_water
+
+lat LL 1 0.0 0.0 4 4 3.4
+M M M M
+M M  M M
+M TR TR M
+M M M M
+
+cell cell_assy_LL L fill LL -surf_assy_clad  graphite_bottom -graphite_top
+cell cell_assy_LL_mod1 L mat_water surf_assy_clad  graphite_bottom -graphite_top
+cell cell_assy_LL_mod2 L mat_water -graphite_bottom:graphite_top
+
+%%%%%%%irradiation positions in water with one big channel - Absolutely just guessing sizes here
+pin UR
+mat_water 3.0
+mat_clad 3.15
+mat_water
+
+cell cell_assy_UU U fill UR -surf_assy_clad  graphite_bottom -graphite_top
+cell cell_assy_UU_mod1 U mat_water surf_assy_clad  graphite_bottom -graphite_top
+cell cell_assy_UU_mod2 U mat_water -graphite_bottom:graphite_top
+
+%%%%%%%irradiation positions in water with thermal rabbit - Absolutely just guessing sizes here
+%plot 2 300 300 -3.4 -33 33 -33 33 gives a no cell error if this or U is filled in the 39th position.
+%in case i simply have a 2x2 lattice, hence the 4by4.
+%TODO: such error might appear for other touching surfaces as well. 
+pin VR
+mat_air 1.45
+mat_clad 1.6
+mat_water
+
+lat VV 1 0.0 0.0 4 4 3.4
+M M M M
+M M  M M
+M VR VR M
+M M M M
+
+cell cell_assy_VV V fill VV -surf_assy_clad  graphite_bottom -graphite_top
+cell cell_assy_VV_mod1 V mat_water surf_assy_clad  graphite_bottom -graphite_top
+cell cell_assy_VV_mod2 V mat_water -graphite_bottom:graphite_top
+
+
+%%%%%CONTROL AND SHUTDOWN RODS
+%unclear whether the given diameter is inner or outer diameter,
+%here i assume, the outer diameter is 30mm, but it does seem there is some space to increase.
+%all rods are considered to be 60cm height. They can be moved by modifying the bottom and top surfaces.
+%currently the safety rods are out and the others are in.
+
+%k - manual control rod
+%position -7.2 -3.6
+pin kpin
+fill kuni 1.5 
+mat_clad 
+trans U kpin -7.2 -3.6 0
+
+surf kpin_cyl cyl -7.2 -3.6 1.65
+surf kpin_bottom pz 25
+surf kpin_top    pz 85                 %modify these for control rod position
+cell kpin_cell_uni1 kuni mat_b4c kpin_bottom -kpin_top
+cell kpin_cell_uni2 kuni mat_water kpin_top:-kpin_bottom
+
+
+
+%a - automatic control rod
+%position -7.2 10.8
+pin apin
+fill auni 1.5 
+mat_clad 
+trans U apin -7.2 10.8 0
+
+surf apin_cyl cyl -7.2 10.8 1.65
+surf apin_bottom pz 25
+surf apin_top    pz 85                 %modify these for control rod position
+cell apin_cell_uni1 auni mat_acr apin_bottom -apin_top     %THIS ALSO HAS SOME CADMIUM COATING
+cell apin_cell_uni2 auni mat_water apin_top:-apin_bottom
+
+
+%b1 - safety 1
+%position 7.2 -3.6
+pin b1pin
+fill b1uni 1.5 
+mat_clad 
+trans U b1pin 7.2 -3.6 0
+
+surf b1pin_cyl cyl 7.2 -3.6 1.65
+surf b1pin_bottom pz 25
+surf b1pin_top    pz 85                 %modify these for control rod position
+cell b1pin_cell_uni1 b1uni mat_b4c b1pin_bottom -b1pin_top
+cell b1pin_cell_uni2 b1uni mat_air b1pin_top:-b1pin_bottom
+
+
+%b2 - safety 2
+%position 0.0 3.6
+pin b2pin
+fill b2uni 1.5 
+mat_clad 
+trans U b2pin 0.0 3.6 0
+
+surf b2pin_cyl cyl 0.0 3.6 1.65
+surf b2pin_bottom pz 25
+surf b2pin_top    pz 85                 %modify these for control rod position
+cell b2pin_cell_uni1 b2uni mat_b4c b2pin_bottom -b2pin_top
+cell b2pin_cell_uni2 b2uni mat_air b2pin_top:-b2pin_bottom
+
+
+
+
+%%%%CORE%%%%
+lat Z 1 0.0 0.0 8 9 7.2
+R R Q Q Q Q R R 
+R R L L U L R R 
+R R F F F F R R
+R F I I I I L Q 
+R F I K J I V Q 
+R F I J I F L Q 
+R G I I F H Q Q 
+R R R R R R R R 
+R R R R R R R R 
+
+trans L Z 30 0 0 0 0 0 270
+trans L Z 38 0 0 0 0 0 180
+trans L Z 28 0 0 0 0 0 270
+trans L Z 31 0 0 0 0 0 270
+trans L Z 35 0 0 0 0 0 90
+trans L Z 36 0 0 0 0 0 270
+trans L Z 45 0 0 0 0 0 180
+trans L Z 47 0 0 0 0 0 270
+trans L Z 39 0 0 0 0 0 270
+trans L Z 51 0 0 0 0 0 90
+trans L Z 52 0 0 0 0 0 180
+
+
+
+%%vessel water and concrete. the concrete part could be refined to represent the heavy concrete part and the irradiation tunnel.
+%also detector channels could be added.
+surf surf_zone rect -28.8 28.8 -32.4 32.4
+surf surf_zone_clad rect -30.8 30.8 -34.4 34.4
+surf surf_zone_water cyl 0 0 50
+surf surf_zone_concrete cyl 0 0 100
+surf bottom pz -60
+surf top  pz 100
+surf corebottom pz -30
+surf coretop pz  30
+cell zone 0 fill Z -surf_zone bottom -top kpin_cyl apin_cyl b1pin_cyl b2pin_cyl
+cell zone_clad 0 mat_clad surf_zone -surf_zone_clad corebottom -coretop
+cell zone_clad_mod1 0 mat_water surf_zone -surf_zone_clad -corebottom bottom
+cell zone_clad_mod2 0 mat_water surf_zone -surf_zone_clad coretop -top
+cell zone_water 0 mat_water surf_zone_clad -surf_zone_water bottom -top
+cell zone_concrete 0 mat_concrete surf_zone_water -surf_zone_concrete bottom -top
+cell kcr 0 fill kpin -kpin_cyl bottom -top
+cell acr 0 fill apin -apin_cyl bottom -top
+cell b1cr 0 fill b1pin -b1pin_cyl bottom -top
+cell b2cr 0 fill b2pin -b2pin_cyl bottom -top
+%the realm of monsters
+cell void1 0 outside surf_zone_concrete
+cell void2 0 outside -surf_zone_concrete -bottom 
+cell void3 0 outside -surf_zone_concrete top
+
+%%%%%%%%%%%%%%%%%%% MATERIALS %%%%%%%%%%%%%%%%%%%%
+
+%Note 1 the fuel is 10w% enriched (or is it a%) contains some magnesium (80g U, 13g Mg, rest O)
+%Note 2 according to info 2952g U5 at start, that is 8g/rod, which is in agreement with the 80g U/rod at 10w%
+%for 10w% I calculate 11.846436w% Oxygen in UO2, hence 9.49g/rod
+%TODO Note 3 that at such a high enrichment the U4 content is not negligible, would be interesting to consider
+%with that the total mass of a rod (without cladding) is 102.487728 g. Therefore the density should be
+%102.487728/(0.35**2*np.pi*50)=5.32618g/cm3
+%But, first reference has "The fuel, which was made in the 1960’s in the former Soviet Union, has a total mass of 29.54 kg."
+%here is some discrepancy since with the above figures the total fuel mass (without clad) is already cca 38kg.
+%also the density feels rather low.
+%Note 4: sss2 -checkvolumes 100000000 or.deck gives
+% Material mat_fuel       : 7.1004E+03 7.0745E+03 (0.00300) : -0.00365
+%hence the volumes in the geometry can be considered correct. if one uses divisors, the volume should be taken care of.
+mat mat_fuel -5.32618 burn 1 vol 7100.39209619463 %0.35**2*np.pi*50*(400-16-3-8-4)
+92235.03c -8 
+92238.03c -72 
+8016.03c -9.487728
+12000.03c -13
+
+mat mat_clad -2.7
+13027.03c 1
+
+
+% Water
+mat mat_water -1 %moder lwtr 1001 %Sab!!!
+ 8016.03c 1.0
+ 1001.03c 2.0
+%therm lwtr lwe7.12t
+ 
+mat mat_graphite -2.15 %Sab!!!
+6012.03c 1
+
+mat mat_concrete -2.18 %Hanford dry, no idea what is the actual content
+1001.03c 0.078440
+8016.03c 0.595591
+11023.03c 0.001864
+12000.03c 0.011462
+13027.03c 0.050831
+14000.03c 0.195330
+19000.03c 0.006577
+20000.03c 0.039567
+26000.03c 0.020338
+
+mat mat_air 0.001205 
+6000.03c 0.000150 
+7014.03c 0.784431
+8016.03c 0.210748
+
+mat mat_b4c -2.52   %this is just for testing, might be different enrichment
+5010.03c 0.99
+5011.03c 0.01
+6000.03c 0.2
+
+mat mat_acr -4.0 %-2.7   %this is just for testing, but it should have some Cd coating. i just mix in some.
+13027.03c 0.8
+48000.03c 0.2
+
+mat mat_cad -8.65   
+48000.03c 1
+
+%plot 3 6000 6000 -26 -35 35 -35 35
+%plot 3 6000 6000 -16 -35 35 -35 35
+%plot 3 6000 6000 -5 -35 35 -35 35
+%plot 3 6000 6000 0 -35 35 -35 35
+%plot 3 6000 6000 5 -35 35 -35 35
+%plot 3 6000 6000 16 -35 35 -35 35
+%plot 3 6000 6000 26 -35 35 -35 35
+%plot 3 6000 6000 46 -35 35 -35 35
+%plot 3 6000 6000 0 -35 35 -35 35
+%plot 3 6000 6000 0 -100 100 -100 100
+%plot 2 3000 3000 0.85 -33 33 -33 33
+%plot 2 3000 3000 -3.6 -60 100 -60 100
+%plot 2 300 300 -6.8 -33 33 -33 33
+%plot 2 300 300 -3.4 -33 33 -33 33
+
+%detectors, div, ww, etc.
+
+set pop 5000 100 10
+set acelib "/home/elter/jeff31.xsdata"
+set power 100000
+set seed 1538576246
+set declib "/usr/local/SERPENT/endf-b-vi-8_decay.dat"
+set nfylib "/usr/local/SERPENT/endf-b-vi-8_nfpy.dat"
+
+set inventory u235 u238 o16
+
+dep bustep
+0.6
+
+%dep decstep
+%365
